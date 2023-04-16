@@ -2,57 +2,68 @@ package ru.omsu.fctk;
 
 import de.scravy.pair.Pair;
 import de.scravy.pair.Pairs;
-import ru.omsu.fctk.CarWashService.ICarWashConditions;
-import ru.omsu.fctk.CarWashService.ICarWashProfit;
+import ru.omsu.fctk.CarWashService.ICarWashConditionService;
 import ru.omsu.fctk.data.CarWashCondition;
 import ru.omsu.fctk.data.car.Car;
 
 import java.util.*;
 
-public class CarWash implements ICarWash{
+public class CarWash implements ICarWash {
 
-    private List<Pair<Integer, Car>> arrivalListOfCars;
+    private Queue<Pair<Integer, Car>> arrivalQueueOfCars;
     private int countOfPosts;
-    private long profitPerMinute; //стоимость мойки за одну минуту в копейках
-    private ICarWashConditions carWashConditions;
-    private ICarWashProfit carWashProfit;
-    private int timeOfAddingLastCar = 0;
-    private List<CarWashCondition> listOfCarWashConditions = null;
-    private long profit = 0;
+    //стоимость мойки за одну минуту в копейках
+    private long profitPerMinute;
+    private ICarWashConditionService carWashConditionService;
+    private CarWashCondition correctCarWashCondition = null;
     private boolean wasThereASimulation = false;
+    private static final int STANDARD_PROFIT_PER_MINUTE = 3000;
 
-    public CarWash(int countOfPosts, long profitPerMinute, ICarWashConditions carWashConditions, ICarWashProfit carWashProfit) {
-        if (countOfPosts <= 0 || profitPerMinute < 0 || carWashConditions == null || carWashProfit == null) throw new IllegalArgumentException();
+    public CarWash(int countOfPosts, long profitPerMinute, ICarWashConditionService carWashConditionService) {
+        if (countOfPosts <= 0 || profitPerMinute < 0 || carWashConditionService == null)
+            throw new IllegalArgumentException();
         arrivalListOfCars = new LinkedList<>();
         this.countOfPosts = countOfPosts;
         this.profitPerMinute = profitPerMinute;
-        this.carWashConditions = carWashConditions;
-        this.carWashProfit = carWashProfit;
+        this.carWashConditionService = carWashConditionService;
     }
-    public CarWash(int countOfPosts, ICarWashConditions carWashConditions, ICarWashProfit carWashProfit) {
-        this(countOfPosts, 3000, carWashConditions, carWashProfit);
+
+    public CarWash(int countOfPosts, ICarWashConditionService carWashConditionService) {
+        this(countOfPosts, STANDARD_PROFIT_PER_MINUTE, carWashConditionService);
     }
+
     @Override
     public void addCarToCarWash(Car car, int time) {
-        if (time < 0 && time < timeOfAddingLastCar) throw new IllegalArgumentException();
+        if (time < 0 || (correctCarWashCondition != null
+                && time < correctCarWashCondition.currentTime))
+            throw new IllegalArgumentException();
         arrivalListOfCars.add(Pairs.from(time, car));
-        timeOfAddingLastCar = time;
         wasThereASimulation = false;
     }
 
     @Override
     public long getProfit() {
-        if (wasThereASimulation) return profit;
-        throw new IllegalStateException("The simulation has not been started yet");
+        if (wasThereASimulation) return correctCarWashCondition.currentProfit;
+        throw new IllegalStateException("The simulation has not started or is not finished yet");
     }
 
     @Override
-    public List<CarWashCondition> getListOfCarWashConditions() {
-        if (wasThereASimulation) return listOfCarWashConditions;
-        listOfCarWashConditions = carWashConditions.getListOfCarWashConditions(arrivalListOfCars, countOfPosts);
-        profit = carWashProfit.getProfitOfCarWash(arrivalListOfCars, countOfPosts, profitPerMinute);
+    public CarWashCondition getNextCarWashCondition() {
+        if (wasThereASimulation) return null;
+        CarWashCondition buffer = carWashConditionService.getNextCarWashCondition
+                (arrivalListOfCars, correctCarWashCondition);
+        if (buffer != null) {
+            correctCarWashCondition = buffer;
+            return correctCarWashCondition;
+        }
         wasThereASimulation = true;
-        return listOfCarWashConditions;
+        return null;
+    }
+
+    public void reset() {
+        arrivalListOfCars = new LinkedList<>();
+        correctCarWashCondition = null;
+        wasThereASimulation = false;
     }
 
     @Override
@@ -60,11 +71,16 @@ public class CarWash implements ICarWash{
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         CarWash carWash = (CarWash) o;
-        return countOfPosts == carWash.countOfPosts && profitPerMinute == carWash.profitPerMinute && timeOfAddingLastCar == carWash.timeOfAddingLastCar && profit == carWash.profit && wasThereASimulation == carWash.wasThereASimulation && Objects.equals(arrivalListOfCars, carWash.arrivalListOfCars) && Objects.equals(carWashConditions, carWash.carWashConditions) && Objects.equals(carWashProfit, carWash.carWashProfit) && Objects.equals(listOfCarWashConditions, carWash.listOfCarWashConditions);
+        return countOfPosts == carWash.countOfPosts && profitPerMinute == carWash.profitPerMinute
+                && wasThereASimulation == carWash.wasThereASimulation
+                && Objects.equals(arrivalListOfCars, carWash.arrivalListOfCars)
+                && Objects.equals(carWashConditionService, carWash.carWashConditionService)
+                && Objects.equals(correctCarWashCondition, carWash.correctCarWashCondition);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(arrivalListOfCars, countOfPosts, profitPerMinute, carWashConditions, carWashProfit, timeOfAddingLastCar, listOfCarWashConditions, profit, wasThereASimulation);
+        return Objects.hash(arrivalListOfCars, countOfPosts, profitPerMinute, carWashConditionService,
+                correctCarWashCondition, wasThereASimulation);
     }
 }

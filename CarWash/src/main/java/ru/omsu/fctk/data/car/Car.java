@@ -2,11 +2,12 @@ package ru.omsu.fctk.data.car;
 
 import java.util.Objects;
 
-public abstract class Car {
+public class Car {
     public final String carModel;
     public final int washingTime;
 
     public Car(String carModel, int washingTime) {
+        if(carModel == null || washingTime <= 0) throw new IllegalArgumentException();
         this.carModel = carModel;
         this.washingTime = washingTime;
     }
@@ -22,5 +23,13 @@ public abstract class Car {
     @Override
     public int hashCode() {
         return Objects.hash(carModel, washingTime);
+    }
+
+    @Override
+    public String toString() {
+        return "Car{" +
+                "carModel='" + carModel + '\'' +
+                ", washingTime=" + washingTime +
+                '}';
     }
 }
