@@ -27,7 +27,8 @@ public class CarWashConditionService implements ICarWashConditionService {
         this.profitPerMinute = (ProfitPerMinute) profitPerMinute;
         this.countOfPosts = countOfPosts;
     }
-
+    /*Метод формирует состояния автомойки. Возвращает null если формировать
+     больше нечего, или если очередь arrivalQueueOfCars пуста*/
     @Override
     public CarWashCondition getNextCarWashCondition() {
         int arrivalTimeOfTheLastCar = -1;

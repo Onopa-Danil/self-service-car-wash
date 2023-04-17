@@ -1,7 +1,7 @@
 package ru.omsu.fctk.data;
 
 import java.util.Objects;
-
+/*Класс хранит информация об ценообразовании. Его реализация связана напрямую с классом CarWashConditionService*/
 public class ProfitPerMinute implements IProfitPerMinute{
     public final long profitPerMinute;
 
