@@ -21,4 +21,11 @@ public class ProfitPerMinute implements IProfitPerMinute{
     public int hashCode() {
         return Objects.hash(profitPerMinute);
     }
+
+    @Override
+    public String toString() {
+        return "ProfitPerMinute{" +
+                "profitPerMinute=" + profitPerMinute +
+                '}';
+    }
 }

@@ -87,4 +87,5 @@ public class CarWash implements ICarWash {
         return Objects.hash(arrivalQueueOfCars, countOfPosts, profitPerMinute, carWashConditionService,
                 correctCarWashCondition, wasThereASimulation);
     }
+
 }

@@ -30,9 +30,9 @@ public class CarWashConditionService implements ICarWashConditionService {
 
     @Override
     public CarWashCondition getNextCarWashCondition() {
-        int arrivalTimeOfTheLastCar = 0;
-        long profit = 0;
+        int arrivalTimeOfTheLastCar = -1;
         if (!arrivalQueueOfCars.isEmpty()) arrivalTimeOfTheLastCar = arrivalQueueOfCars.peekLast().getFirst();
+        long profit = 0;
         if (previousCarWashCondition != null) profit = previousCarWashCondition.currentProfit;
         boolean changesInTheQueue = false;
         int initializingTime = 0;
@@ -68,5 +68,21 @@ public class CarWashConditionService implements ICarWashConditionService {
             }
         }
         return null;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        CarWashConditionService that = (CarWashConditionService) o;
+        return countOfPosts == that.countOfPosts && Objects.equals(arrivalQueueOfCars, that.arrivalQueueOfCars)
+                && Objects.equals(carInPost, that.carInPost) && Objects.equals(queueOfCars, that.queueOfCars)
+                && Objects.equals(previousCarWashCondition, that.previousCarWashCondition)
+                && Objects.equals(profitPerMinute, that.profitPerMinute);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(arrivalQueueOfCars, carInPost, queueOfCars, previousCarWashCondition, profitPerMinute, countOfPosts);
     }
 }
