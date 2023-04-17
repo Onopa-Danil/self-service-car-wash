@@ -37,7 +37,7 @@ public class CarWash implements ICarWash {
 
     @Override
     public void addCarToCarWash(Car car, int time) {
-        if (time < 0 || (correctCarWashCondition != null
+        if (car == null || time < 0 || (correctCarWashCondition != null
                 && time <= correctCarWashCondition.currentTime) ||
                 (arrivalQueueOfCars.size() != 0 && time < arrivalQueueOfCars.peekLast().getFirst()))
             throw new IllegalArgumentException();
