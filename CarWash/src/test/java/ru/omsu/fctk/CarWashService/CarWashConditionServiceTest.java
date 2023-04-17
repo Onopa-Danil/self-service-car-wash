@@ -12,7 +12,7 @@ public class CarWashConditionServiceTest {
     @Test
     public void getNextCarWashCondition() {
         ICarWashConditionService carWashConditionService = new CarWashConditionService();
-        ICarWash testCarWash = new CarWash(2, carWashConditionService);
+        new CarWash(2, carWashConditionService);
         assertNull(carWashConditionService.getNextCarWashCondition());
     }
 }
