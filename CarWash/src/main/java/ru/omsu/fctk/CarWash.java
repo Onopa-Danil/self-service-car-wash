@@ -4,40 +4,44 @@ import de.scravy.pair.Pair;
 import de.scravy.pair.Pairs;
 import ru.omsu.fctk.CarWashService.ICarWashConditionService;
 import ru.omsu.fctk.data.CarWashCondition;
+import ru.omsu.fctk.data.IProfitPerMinute;
+import ru.omsu.fctk.data.ProfitPerMinute;
 import ru.omsu.fctk.data.car.Car;
 
 import java.util.*;
 
 public class CarWash implements ICarWash {
 
-    private Queue<Pair<Integer, Car>> arrivalQueueOfCars;
+    private Deque<Pair<Integer, Car>> arrivalQueueOfCars;
     private int countOfPosts;
-    //стоимость мойки за одну минуту в копейках
-    private long profitPerMinute;
+    //правила образования прибыли
+    private IProfitPerMinute profitPerMinute;
     private ICarWashConditionService carWashConditionService;
     private CarWashCondition correctCarWashCondition = null;
     private boolean wasThereASimulation = false;
-    private static final int STANDARD_PROFIT_PER_MINUTE = 3000;
 
-    public CarWash(int countOfPosts, long profitPerMinute, ICarWashConditionService carWashConditionService) {
-        if (countOfPosts <= 0 || profitPerMinute < 0 || carWashConditionService == null)
+    private static final IProfitPerMinute STANDARD_PROFIT_PER_MINUTE = new ProfitPerMinute(3000);
+    public CarWash(int countOfPosts, IProfitPerMinute profitPerMinute, ICarWashConditionService carWashConditionService) {
+        if (countOfPosts <= 0 || carWashConditionService == null)
             throw new IllegalArgumentException();
-        arrivalListOfCars = new LinkedList<>();
+        arrivalQueueOfCars = new LinkedList<>();
         this.countOfPosts = countOfPosts;
         this.profitPerMinute = profitPerMinute;
         this.carWashConditionService = carWashConditionService;
+        carWashConditionService.start(arrivalQueueOfCars, this.profitPerMinute, this.countOfPosts);
     }
-
-    public CarWash(int countOfPosts, ICarWashConditionService carWashConditionService) {
+    public CarWash(int countOfPosts, ICarWashConditionService carWashConditionService)
+    {
         this(countOfPosts, STANDARD_PROFIT_PER_MINUTE, carWashConditionService);
     }
 
     @Override
     public void addCarToCarWash(Car car, int time) {
         if (time < 0 || (correctCarWashCondition != null
-                && time < correctCarWashCondition.currentTime))
+                && time <= correctCarWashCondition.currentTime) ||
+                (arrivalQueueOfCars.size() != 0 && time < arrivalQueueOfCars.peekLast().getFirst()))
             throw new IllegalArgumentException();
-        arrivalListOfCars.add(Pairs.from(time, car));
+        arrivalQueueOfCars.addLast(Pairs.from(time, car));
         wasThereASimulation = false;
     }
 
@@ -50,8 +54,7 @@ public class CarWash implements ICarWash {
     @Override
     public CarWashCondition getNextCarWashCondition() {
         if (wasThereASimulation) return null;
-        CarWashCondition buffer = carWashConditionService.getNextCarWashCondition
-                (arrivalListOfCars, correctCarWashCondition);
+        CarWashCondition buffer = carWashConditionService.getNextCarWashCondition();
         if (buffer != null) {
             correctCarWashCondition = buffer;
             return correctCarWashCondition;
@@ -61,9 +64,10 @@ public class CarWash implements ICarWash {
     }
 
     public void reset() {
-        arrivalListOfCars = new LinkedList<>();
+        arrivalQueueOfCars = new LinkedList<>();
         correctCarWashCondition = null;
         wasThereASimulation = false;
+        carWashConditionService.start(arrivalQueueOfCars, profitPerMinute, countOfPosts);
     }
 
     @Override
@@ -71,16 +75,16 @@ public class CarWash implements ICarWash {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         CarWash carWash = (CarWash) o;
-        return countOfPosts == carWash.countOfPosts && profitPerMinute == carWash.profitPerMinute
-                && wasThereASimulation == carWash.wasThereASimulation
-                && Objects.equals(arrivalListOfCars, carWash.arrivalListOfCars)
+        return countOfPosts == carWash.countOfPosts && wasThereASimulation == carWash.wasThereASimulation
+                && Objects.equals(arrivalQueueOfCars, carWash.arrivalQueueOfCars)
+                && Objects.equals(profitPerMinute, carWash.profitPerMinute)
                 && Objects.equals(carWashConditionService, carWash.carWashConditionService)
                 && Objects.equals(correctCarWashCondition, carWash.correctCarWashCondition);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(arrivalListOfCars, countOfPosts, profitPerMinute, carWashConditionService,
+        return Objects.hash(arrivalQueueOfCars, countOfPosts, profitPerMinute, carWashConditionService,
                 correctCarWashCondition, wasThereASimulation);
     }
 }

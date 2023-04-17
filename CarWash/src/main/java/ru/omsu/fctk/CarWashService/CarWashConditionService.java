@@ -3,28 +3,44 @@ package ru.omsu.fctk.CarWashService;
 import de.scravy.pair.Pair;
 import de.scravy.pair.Pairs;
 import ru.omsu.fctk.data.CarWashCondition;
+import ru.omsu.fctk.data.IProfitPerMinute;
+import ru.omsu.fctk.data.ProfitPerMinute;
 import ru.omsu.fctk.data.car.Car;
 
 import java.util.*;
 
 
 public class CarWashConditionService implements ICarWashConditionService {
+    private Deque<Pair<Integer, Car>> arrivalQueueOfCars;
+    private Map<Integer, Pair<Integer, Car>> carInPost;
+    private Queue<Pair<Integer, Car>> queueOfCars;
+    private CarWashCondition previousCarWashCondition;
+    private ProfitPerMinute profitPerMinute;
+    private int countOfPosts;
+    @Override
+    public void start(Deque<Pair<Integer, Car>> arrivalQueueOfCars,IProfitPerMinute profitPerMinute, int countOfPosts)
+    {
+        carInPost = new HashMap<>();
+        queueOfCars = new LinkedList<>();
+        previousCarWashCondition = null;
+        this.arrivalQueueOfCars = arrivalQueueOfCars;
+        this.profitPerMinute = (ProfitPerMinute) profitPerMinute;
+        this.countOfPosts = countOfPosts;
+    }
 
     @Override
-    CarWashCondition getNextCarWashCondition(List<Pair<Integer, Car>> arrivalListOfCars,
-                                             CarWashCondition previousCarWashCondition) {
-        if (arrivalListOfCars.size() == 0) return new LinkedList<>();
-        Queue<Pair<Integer, Car>> arrivalQueueOfCars = new LinkedList<>(arrivalListOfCars);
-        List<CarWashCondition> listOfCarWashConditions = new LinkedList<>();
-        Map<Integer, Pair<Integer, Car>> carInPost = new HashMap<>();
-        Queue<Pair<Integer, Car>> queueOfCars = new LinkedList<>();
-
-        int arrivalTimeOfTheLastCar = arrivalListOfCars.get(arrivalListOfCars.size() - 1).getFirst();
+    public CarWashCondition getNextCarWashCondition() {
+        int arrivalTimeOfTheLastCar = 0;
+        long profit = 0;
+        if (!arrivalQueueOfCars.isEmpty()) arrivalTimeOfTheLastCar = arrivalQueueOfCars.peekLast().getFirst();
+        if (previousCarWashCondition != null) profit = previousCarWashCondition.currentProfit;
         boolean changesInTheQueue = false;
-        for (int currentTime = 0; currentTime <= arrivalTimeOfTheLastCar; currentTime++) {
+        int initializingTime = 0;
+        if (previousCarWashCondition != null) initializingTime = previousCarWashCondition.currentTime;
+        for (int currentTime = initializingTime; currentTime <= arrivalTimeOfTheLastCar || !carInPost.isEmpty(); currentTime++) {
             //прибытие машин на автомойку
-            while (arrivalQueueOfCars.peek() != null && arrivalQueueOfCars.peek().getFirst() == currentTime) {
-                queueOfCars.add(arrivalQueueOfCars.remove());
+            while (!arrivalQueueOfCars.isEmpty() && arrivalQueueOfCars.peekFirst().getFirst() == currentTime) {
+                queueOfCars.add(arrivalQueueOfCars.removeFirst());
                 changesInTheQueue = true;
             }
             //машины уезжают из постов автомойки и на их место встают другие машины из очереди
@@ -32,8 +48,10 @@ public class CarWashConditionService implements ICarWashConditionService {
                 Pair<Integer, Car> currentCar = carInPost.get(i);
                 if (currentCar != null && currentTime - currentCar.getFirst() == currentCar.getSecond().washingTime) {
                     Pair<Integer, Car> buffer = queueOfCars.poll();
-                    if (buffer != null) carInPost.put(i, Pairs.from(currentTime, buffer.getSecond()));
-                    else carInPost.put(i, null);
+                    if (buffer != null)
+                        carInPost.put(i, Pairs.from(currentTime, buffer.getSecond()));
+                    else carInPost.remove(i);
+                    profit += currentCar.getSecond().washingTime * profitPerMinute.profitPerMinute;
                     changesInTheQueue = true;
                 } else if (currentCar == null) {
                     Pair<Integer, Car> buffer = queueOfCars.poll();
@@ -43,10 +61,12 @@ public class CarWashConditionService implements ICarWashConditionService {
                     }
                 }
             }
-            if (changesInTheQueue) listOfCarWashConditions.add(new CarWashCondition(new ArrayList<>(queueOfCars),
-                    new HashMap<>(carInPost), currentTime, countOfPosts));
-            changesInTheQueue = false;
+            if (changesInTheQueue) {
+                previousCarWashCondition = new CarWashCondition(new ArrayList<>(queueOfCars),
+                        new HashMap<>(carInPost), currentTime, countOfPosts, profit);
+                return previousCarWashCondition;
+            }
         }
-        return listOfCarWashConditions;
+        return null;
     }
 }
